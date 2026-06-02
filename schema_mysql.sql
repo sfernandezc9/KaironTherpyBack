@@ -214,6 +214,22 @@ CREATE TABLE informe (
 );
 
 -- ============================================================
+-- 14. USUARIO (autenticación)
+-- ============================================================
+CREATE TABLE usuario (
+    id_usuario      INT AUTO_INCREMENT PRIMARY KEY,
+    id_persona      INT NOT NULL UNIQUE,
+    email           VARCHAR(100) UNIQUE NOT NULL,
+    password_hash   VARCHAR(255) NOT NULL,
+    rol             ENUM('administrador','terapeuta') NOT NULL,
+    activo          BOOLEAN DEFAULT TRUE,
+    ultimo_login    TIMESTAMP NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_usuario_persona FOREIGN KEY (id_persona) REFERENCES persona(id_persona) ON DELETE CASCADE
+);
+
+-- ============================================================
 -- ÍNDICES
 -- ============================================================
 CREATE INDEX idx_sesion_ficha       ON sesion(id_ficha);

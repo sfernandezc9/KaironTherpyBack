@@ -11,7 +11,7 @@ services:
       MYSQL_USER: kairon
       MYSQL_PASSWORD: kairon123
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./schema_mysql.sql:/docker-entrypoint-initdb.d/schema_mysql.sql
@@ -38,10 +38,33 @@ services:
       DB_PASSWORD: kairon123
       DB_NAME: kairon_therapy
       PORT: 3000
+      JWT_SECRET: kairon_secret_dev_2026
+      JWT_EXPIRES_IN: 8h
     depends_on:
       mysql:
         condition: service_healthy
     command: sh -c "npm install && npm run dev"
+
+  seed:
+    image: node:20-alpine
+    container_name: kairon_seed
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: kairon
+      DB_PASSWORD: kairon123
+      DB_NAME: kairon_therapy
+      JWT_SECRET: kairon_secret_dev_2026
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: sh -c "npm install && node scripts/seed-usuarios.js"
+    profiles:
+      - seed
 
 volumes:
   mysql_data:

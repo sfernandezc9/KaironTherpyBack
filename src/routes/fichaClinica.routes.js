@@ -1,10 +1,15 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/fichaClinica.controller');
+const authenticate = require('../middleware/authenticate');
+const authorize = require('../middleware/authorize');
 
-router.get('/', ctrl.getAll);
-router.get('/:id', ctrl.getById);
-router.get('/:id/historial', ctrl.getHistorial);
-router.post('/', ctrl.create);
-router.put('/:id', ctrl.update);
+const adminOnly = [authenticate, authorize('administrador')];
+
+router.get('/',             authenticate, ctrl.getAll);
+router.get('/:id',          authenticate, ctrl.getById);
+router.get('/:id/historial',authenticate, ctrl.getHistorial);
+// Solo admin crea ficha; terapeuta puede actualizar
+router.post('/',            ...adminOnly,  ctrl.create);
+router.put('/:id',          authenticate, ctrl.update);
 
 module.exports = router;

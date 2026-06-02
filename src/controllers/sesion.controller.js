@@ -18,8 +18,10 @@ const getAll = async (req, res, next) => {
       WHERE 1=1
     `;
     const params = [];
-    if (id_sucursal)  { sql += ' AND ses.id_sucursal = ?';  params.push(id_sucursal); }
-    if (id_terapeuta) { sql += ' AND ses.id_terapeuta = ?'; params.push(id_terapeuta); }
+    // Terapeuta solo ve sus propias sesiones
+    const filtroTerapeuta = req.user.rol === 'terapeuta' ? req.user.id_terapeuta : id_terapeuta;
+    if (id_sucursal)      { sql += ' AND ses.id_sucursal = ?';  params.push(id_sucursal); }
+    if (filtroTerapeuta)  { sql += ' AND ses.id_terapeuta = ?'; params.push(filtroTerapeuta); }
     if (desde)        { sql += ' AND ses.fecha >= ?';       params.push(desde); }
     if (hasta)        { sql += ' AND ses.fecha <= ?';       params.push(hasta); }
     if (estado)       { sql += ' AND ses.estado = ?';       params.push(estado); }
@@ -163,4 +165,34 @@ const remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getById, getInsumos, create, update, addInsumo, removeInsumo, remove };
+// Stock disponible en una sucursal — para que terapeuta seleccione insumos al crear sesión
+const getStockSucursal = async (req, res, next) => {
+  try {
+    const { id_sucursal } = req.params;
+
+    // Terapeuta solo puede consultar sucursales asignadas
+    if (req.user.rol === 'terapeuta') {
+      const [asignaciones] = await db.query(
+        `SELECT 1 FROM terapeuta_sucursal
+         WHERE id_terapeuta = ? AND id_sucursal = ?
+           AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())`,
+        [req.user.id_terapeuta, id_sucursal]
+      );
+      if (!asignaciones.length) {
+        return res.status(403).json({ error: 'No tienes asignación en esta sucursal' });
+      }
+    }
+
+    const [rows] = await db.query(
+      `SELECT si.id_stock, i.id_insumo, i.nombre, i.unidad_medida, si.cantidad, si.cantidad_minima
+       FROM stock_insumo si
+       JOIN insumo i ON i.id_insumo = si.id_insumo
+       WHERE si.id_sucursal = ? AND si.cantidad > 0
+       ORDER BY i.nombre`,
+      [id_sucursal]
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
+};
+
+module.exports = { getAll, getById, getInsumos, create, update, addInsumo, removeInsumo, remove, getStockSucursal };

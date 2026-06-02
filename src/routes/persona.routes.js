@@ -1,10 +1,14 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/persona.controller');
+const authenticate = require('../middleware/authenticate');
+const authorize = require('../middleware/authorize');
 
-router.get('/', ctrl.getAll);
-router.get('/:id', ctrl.getById);
-router.post('/', ctrl.create);
-router.put('/:id', ctrl.update);
-router.delete('/:id', ctrl.remove);
+const adminOnly = [authenticate, authorize('administrador')];
+
+router.get('/',    authenticate, ctrl.getAll);
+router.get('/:id', authenticate, ctrl.getById);
+router.post('/',   ...adminOnly,  ctrl.create);
+router.put('/:id', ...adminOnly,  ctrl.update);
+router.delete('/:id', ...adminOnly, ctrl.remove);
 
 module.exports = router;
