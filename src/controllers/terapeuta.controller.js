@@ -30,9 +30,10 @@ const getById = async (req, res, next) => {
 const getSucursales = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
-      SELECT s.*, ts.fecha_inicio, ts.fecha_fin
+      SELECT s.*, e.nombre AS nombre_empresa, ts.fecha_inicio, ts.fecha_fin
       FROM terapeuta_sucursal ts
       JOIN sucursal s ON s.id_sucursal = ts.id_sucursal
+      JOIN empresa e ON e.id_empresa = s.id_empresa
       WHERE ts.id_terapeuta = ?
       ORDER BY ts.fecha_inicio DESC
     `, [req.params.id]);
@@ -43,6 +44,11 @@ const getSucursales = async (req, res, next) => {
 const asignarSucursal = async (req, res, next) => {
   try {
     const { id_sucursal, fecha_inicio } = req.body;
+    const [active] = await db.query(
+      `SELECT id FROM terapeuta_sucursal WHERE id_terapeuta = ? AND id_sucursal = ? AND fecha_fin IS NULL`,
+      [req.params.id, id_sucursal]
+    );
+    if (active.length) return res.status(409).json({ error: 'El terapeuta ya tiene una asignación activa en esta sucursal' });
     const [result] = await db.query(
       `INSERT INTO terapeuta_sucursal (id_terapeuta, id_sucursal, fecha_inicio)
        VALUES (?, ?, ?)`,

@@ -63,7 +63,7 @@ schema_mysql.sql   ← DDL completo para MySQL
 
 ## Base de datos
 
-### Tablas (14 total)
+### Tablas (16 total)
 
 | Tabla | Descripción |
 |---|---|
@@ -74,7 +74,9 @@ schema_mysql.sql   ← DDL completo para MySQL
 | `terapeuta` | Subtipo de persona — 1:1 con persona |
 | `terapeuta_sucursal` | M:N terapeuta ↔ sucursal, con fecha_inicio/fecha_fin |
 | `insumo` | Catálogo de insumos |
-| `stock_insumo` | Cantidad de insumo por sucursal |
+| `stock_proveedor` | Stock central del proveedor global — 1 fila por insumo (UNIQUE id_insumo) |
+| `stock_insumo` | Cantidad de insumo por sucursal — solo se incrementa vía transferencia |
+| `transferencia_stock` | Audit de transferencias proveedor → sucursal (con usuario y fecha) |
 | `ficha_clinica` | Ficha clínica — 1:1 con paciente (UNIQUE id_paciente) |
 | `sesion` | Atención: referencia id_ficha (NO id_paciente directo) |
 | `sesion_insumo` | Insumos usados en sesión — descuenta stock en transacción |
@@ -109,6 +111,9 @@ paciente → ficha_clinica (1:1, UNIQUE)
 ficha_clinica → sesion (1:N)   ← sesion usa id_ficha, NUNCA id_paciente directo
 sesion → sesion_insumo (1:N)
 ficha_clinica → historial_atencion (1:N, auto-generado)
+insumo → stock_proveedor (1:1, UNIQUE)   ← stock global del proveedor
+stock_proveedor → transferencia_stock (1:N)
+stock_insumo → transferencia_stock (N:1)
 stock_insumo → sesion_insumo (N:1)
 ```
 
@@ -172,7 +177,7 @@ Authorization: Bearer <token>   ← header en todas las rutas protegidas
 | `/api/terapeutas` | admin | admin | admin | admin | admin |
 | `/api/insumos` | admin | admin | admin | admin | admin |
 | `/api/stock` | admin | admin | admin | admin | admin |
-| `/api/fichas` | auth | auth | **admin** | auth | — |
+| `/api/fichas` | auth | auth | auth | auth | — |
 | `/api/sesiones` | auth | auth | auth | auth | auth |
 | `/api/historial` | auth | auth | — | — | — |
 | `/api/informes` | admin | admin | admin | admin | admin |
@@ -191,7 +196,20 @@ const filtroTerapeuta = req.user.rol === 'terapeuta'
   : id_terapeuta;  // query param del admin
 ```
 
-### 2. Insumos en sesión — transacción con control de stock
+### 2. Flujo de stock: proveedor → sucursal → sesión
+
+```
+Ingresar al proveedor: PATCH /api/stock/proveedor/:id/ajustar { delta: +N }
+Transferir a sucursal: POST  /api/stock/transferir { id_stock_proveedor, id_stock, cantidad }
+Usar en sesión:        POST  /api/sesiones/:id/insumos { id_stock, cantidad_usada }
+```
+
+- `stock_proveedor` es global (1 por insumo). Stock positivo solo vía `ajustarProveedor`.
+- `stock_insumo` (sucursal) solo aumenta vía transferencia. `PATCH /api/stock/:id/ajustar` rechaza `delta > 0`.
+- Transferencia: transacción — verifica disponibilidad en proveedor, verifica que id_insumo coincida, descuenta proveedor y suma sucursal atómicamente.
+- `PUT /api/stock/:id` solo permite actualizar `cantidad_minima`, no `cantidad`.
+
+### 3. Insumos en sesión — transacción con control de stock
 
 `POST /api/sesiones/:id/insumos { id_stock, cantidad_usada }`:
 - Verifica `stock_insumo.cantidad >= cantidad_usada` → 400 si insuficiente
@@ -214,14 +232,14 @@ El controller hace diff campo a campo sobre 6 campos auditables:
 - Luego inserta en `paciente` / `terapeuta` usando el `id_persona` obtenido
 - Rollback completo si cualquier paso falla
 
-### 5. Stock de sucursal para terapeutas
+### 6. Stock de sucursal para terapeutas
 
 `GET /api/sesiones/stock-sucursal/:id_sucursal`:
 - Terapeuta: verifica que tenga asignación activa en esa sucursal (403 si no)
 - Retorna solo insumos con `cantidad > 0`
 - Admin: acceso sin restricción de sucursal
 
-### 6. Ficha clínica — flujo obligatorio
+### 7. Ficha clínica — flujo obligatorio
 
 ```
 Crear paciente → Crear ficha (POST /fichas { id_paciente }) → Crear sesión ({ id_ficha })
@@ -247,8 +265,15 @@ GET  /api/fichas/:id/historial
 GET  /api/sesiones/:id/insumos
 POST /api/sesiones/:id/insumos           { id_stock, cantidad_usada }
 DELETE /api/sesiones/:id/insumos/:id_uso
+GET  /api/stock/proveedor                → stock global del proveedor
+GET  /api/stock/proveedor/bajo-minimo
+GET  /api/stock/proveedor/:id
+POST /api/stock/proveedor               { id_insumo, cantidad, cantidad_minima }
+PATCH /api/stock/proveedor/:id/ajustar  { delta: number }  (+/-)
+POST /api/stock/transferir              { id_stock_proveedor, id_stock, cantidad, notas? }
+GET  /api/stock/transferencias?id_sucursal=&id_insumo=&desde=&hasta=
 GET  /api/stock/bajo-minimo
-PATCH /api/stock/:id/ajustar             { delta: number }  (+/-)
+PATCH /api/stock/:id/ajustar            { delta: number }  (solo negativo — merma/ajuste)
 GET  /api/insumos/:id/stock
 GET  /api/sesiones/stock-sucursal/:id_sucursal
 GET  /api/historial?id_ficha=&id_terapeuta=&campo=

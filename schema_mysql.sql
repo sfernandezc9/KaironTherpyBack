@@ -92,7 +92,8 @@ CREATE TABLE terapeuta_sucursal (
     id_sucursal     INT NOT NULL,
     fecha_inicio    DATE NOT NULL DEFAULT (CURRENT_DATE),
     fecha_fin       DATE,
-    UNIQUE KEY uq_terapeuta_sucursal_inicio (id_terapeuta, id_sucursal, fecha_inicio),
+    activo          TINYINT GENERATED ALWAYS AS (IF(fecha_fin IS NULL, 1, NULL)) STORED,
+    UNIQUE KEY uq_terapeuta_sucursal_activo (id_terapeuta, id_sucursal, activo),
     CONSTRAINT fk_ts_terapeuta FOREIGN KEY (id_terapeuta) REFERENCES terapeuta(id_terapeuta) ON DELETE CASCADE,
     CONSTRAINT fk_ts_sucursal  FOREIGN KEY (id_sucursal)  REFERENCES sucursal(id_sucursal)  ON DELETE CASCADE
 );
@@ -115,7 +116,7 @@ CREATE TABLE stock_insumo (
     id_stock        INT AUTO_INCREMENT PRIMARY KEY,
     id_sucursal     INT NOT NULL,
     id_insumo       INT NOT NULL,
-    cantidad        DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    cantidad        DECIMAL(10, 2) NOT NULL DEFAULT 0 CHECK (cantidad >= 0),
     cantidad_minima DECIMAL(10, 2) DEFAULT 0,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_stock_sucursal_insumo (id_sucursal, id_insumo),
@@ -152,6 +153,8 @@ CREATE TABLE sesion (
     duracion_minutos INT,
     estado          VARCHAR(30) DEFAULT 'realizada',
     notas_sesion    TEXT,
+    archivo_path    VARCHAR(255),
+    archivo_nombre  VARCHAR(255),
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_sesion_ficha      FOREIGN KEY (id_ficha)     REFERENCES ficha_clinica(id_ficha) ON DELETE CASCADE,
     CONSTRAINT fk_sesion_terapeuta  FOREIGN KEY (id_terapeuta) REFERENCES terapeuta(id_terapeuta),
@@ -183,6 +186,7 @@ CREATE TABLE sesion_insumo (
     id_sesion       INT NOT NULL,
     id_stock        INT NOT NULL,
     cantidad_usada  DECIMAL(10, 2) NOT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_si_sesion FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion) ON DELETE CASCADE,
     CONSTRAINT fk_si_stock  FOREIGN KEY (id_stock)  REFERENCES stock_insumo(id_stock)
 );
@@ -227,6 +231,34 @@ CREATE TABLE usuario (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_usuario_persona FOREIGN KEY (id_persona) REFERENCES persona(id_persona) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- 15. STOCK_PROVEEDOR
+-- ============================================================
+CREATE TABLE stock_proveedor (
+    id_stock_proveedor  INT AUTO_INCREMENT PRIMARY KEY,
+    id_insumo           INT NOT NULL UNIQUE,
+    cantidad            DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    cantidad_minima     DECIMAL(10, 2) DEFAULT 0,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sp_insumo FOREIGN KEY (id_insumo) REFERENCES insumo(id_insumo) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- 16. TRANSFERENCIA_STOCK
+-- ============================================================
+CREATE TABLE transferencia_stock (
+    id_transferencia    INT AUTO_INCREMENT PRIMARY KEY,
+    id_stock_proveedor  INT NOT NULL,
+    id_stock            INT NOT NULL,
+    cantidad            DECIMAL(10, 2) NOT NULL,
+    id_usuario          INT NOT NULL,
+    notas               VARCHAR(255),
+    fecha               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ts_proveedor FOREIGN KEY (id_stock_proveedor) REFERENCES stock_proveedor(id_stock_proveedor),
+    CONSTRAINT fk_ts_stock     FOREIGN KEY (id_stock)           REFERENCES stock_insumo(id_stock),
+    CONSTRAINT fk_ts_usuario   FOREIGN KEY (id_usuario)         REFERENCES usuario(id_usuario)
 );
 
 -- ============================================================

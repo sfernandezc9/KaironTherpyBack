@@ -46,6 +46,18 @@ exports.login = async (req, res, next) => {
       expiresIn: process.env.JWT_EXPIRES_IN || '8h',
     });
 
+    let sucursales = [];
+    if (user.id_terapeuta) {
+      const [rows2] = await pool.query(
+        `SELECT DISTINCT s.id_sucursal, s.nombre, s.direccion
+         FROM terapeuta_sucursal ts
+         JOIN sucursal s ON s.id_sucursal = ts.id_sucursal
+         WHERE ts.id_terapeuta = ? AND (ts.fecha_fin IS NULL OR ts.fecha_fin > CURDATE())`,
+        [user.id_terapeuta]
+      );
+      sucursales = rows2;
+    }
+
     res.json({
       token,
       usuario: {
@@ -54,6 +66,8 @@ exports.login = async (req, res, next) => {
         rol: user.rol,
         nombres: user.nombres,
         apellidos: user.apellidos,
+        id_terapeuta: user.id_terapeuta || null,
+        sucursales,
       },
     });
   } catch (err) {
@@ -79,10 +93,10 @@ exports.me = async (req, res, next) => {
 
     if (data.id_terapeuta) {
       const [sucursales] = await pool.query(
-        `SELECT s.id_sucursal, s.nombre, s.direccion, ts.fecha_inicio, ts.fecha_fin
+        `SELECT DISTINCT s.id_sucursal, s.nombre, s.direccion
          FROM terapeuta_sucursal ts
          JOIN sucursal s ON s.id_sucursal = ts.id_sucursal
-         WHERE ts.id_terapeuta = ? AND (ts.fecha_fin IS NULL OR ts.fecha_fin >= CURDATE())`,
+         WHERE ts.id_terapeuta = ? AND (ts.fecha_fin IS NULL OR ts.fecha_fin > CURDATE())`,
         [data.id_terapeuta]
       );
       data.sucursales = sucursales;

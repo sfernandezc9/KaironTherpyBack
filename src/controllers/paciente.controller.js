@@ -2,14 +2,30 @@ const db = require('../config/db');
 
 const getAll = async (req, res, next) => {
   try {
-    const [rows] = await db.query(`
-      SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-             p.telefono, p.email, p.direccion, s.nombre AS nombre_sucursal
-      FROM paciente pac
-      JOIN persona  p ON p.id_persona   = pac.id_persona
-      JOIN sucursal s ON s.id_sucursal  = pac.id_sucursal
-      ORDER BY p.apellidos, p.nombres
-    `);
+    let rows;
+    if (req.user.rol === 'terapeuta') {
+      [rows] = await db.query(`
+        SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
+               p.telefono, p.email, p.direccion, s.nombre AS nombre_sucursal
+        FROM paciente pac
+        JOIN persona  p ON p.id_persona  = pac.id_persona
+        JOIN sucursal s ON s.id_sucursal = pac.id_sucursal
+        WHERE pac.id_sucursal IN (
+          SELECT id_sucursal FROM terapeuta_sucursal
+          WHERE id_terapeuta = ? AND (fecha_fin IS NULL OR fecha_fin > CURDATE())
+        )
+        ORDER BY p.apellidos, p.nombres
+      `, [req.user.id_terapeuta]);
+    } else {
+      [rows] = await db.query(`
+        SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
+               p.telefono, p.email, p.direccion, s.nombre AS nombre_sucursal
+        FROM paciente pac
+        JOIN persona  p ON p.id_persona   = pac.id_persona
+        JOIN sucursal s ON s.id_sucursal  = pac.id_sucursal
+        ORDER BY p.apellidos, p.nombres
+      `);
+    }
     res.json(rows);
   } catch (err) { next(err); }
 };
@@ -25,12 +41,32 @@ const getById = async (req, res, next) => {
       WHERE pac.id_paciente = ?
     `, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Paciente no encontrado' });
+    if (req.user.rol === 'terapeuta') {
+      const [asig] = await db.query(
+        `SELECT 1 FROM terapeuta_sucursal
+         WHERE id_terapeuta = ? AND id_sucursal = ?
+           AND (fecha_fin IS NULL OR fecha_fin > CURDATE())`,
+        [req.user.id_terapeuta, rows[0].id_sucursal]
+      );
+      if (!asig.length) return res.status(403).json({ error: 'Acceso denegado' });
+    }
     res.json(rows[0]);
   } catch (err) { next(err); }
 };
 
 const getFicha = async (req, res, next) => {
   try {
+    if (req.user.rol === 'terapeuta') {
+      const [pac] = await db.query('SELECT id_sucursal FROM paciente WHERE id_paciente = ?', [req.params.id]);
+      if (!pac.length) return res.status(404).json({ error: 'Ficha no encontrada' });
+      const [asig] = await db.query(
+        `SELECT 1 FROM terapeuta_sucursal
+         WHERE id_terapeuta = ? AND id_sucursal = ?
+           AND (fecha_fin IS NULL OR fecha_fin > CURDATE())`,
+        [req.user.id_terapeuta, pac[0].id_sucursal]
+      );
+      if (!asig.length) return res.status(403).json({ error: 'Acceso denegado' });
+    }
     const [rows] = await db.query(
       'SELECT * FROM ficha_clinica WHERE id_paciente = ?',
       [req.params.id]
@@ -42,6 +78,17 @@ const getFicha = async (req, res, next) => {
 
 const getSesiones = async (req, res, next) => {
   try {
+    if (req.user.rol === 'terapeuta') {
+      const [pac] = await db.query('SELECT id_sucursal FROM paciente WHERE id_paciente = ?', [req.params.id]);
+      if (!pac.length) return res.status(404).json({ error: 'Paciente no encontrado' });
+      const [asig] = await db.query(
+        `SELECT 1 FROM terapeuta_sucursal
+         WHERE id_terapeuta = ? AND id_sucursal = ?
+           AND (fecha_fin IS NULL OR fecha_fin > CURDATE())`,
+        [req.user.id_terapeuta, pac[0].id_sucursal]
+      );
+      if (!asig.length) return res.status(403).json({ error: 'Acceso denegado' });
+    }
     const [rows] = await db.query(`
       SELECT ses.*, p.nombres, p.apellidos, s.nombre AS nombre_sucursal
       FROM sesion ses

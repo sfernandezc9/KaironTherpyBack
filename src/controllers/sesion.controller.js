@@ -1,4 +1,6 @@
 const db = require('../config/db');
+const path = require('path');
+const fs = require('fs');
 
 const getAll = async (req, res, next) => {
   try {
@@ -56,7 +58,8 @@ const getById = async (req, res, next) => {
 const getInsumos = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
-      SELECT si_uso.*, i.nombre AS nombre_insumo, i.unidad_medida
+      SELECT si_uso.id, si_uso.id_sesion, si_uso.id_stock, si_uso.cantidad_usada, si_uso.created_at AS fecha_asignacion,
+             i.nombre AS nombre_insumo, i.unidad_medida
       FROM sesion_insumo si_uso
       JOIN stock_insumo si ON si.id_stock  = si_uso.id_stock
       JOIN insumo       i  ON i.id_insumo  = si.id_insumo
@@ -80,12 +83,13 @@ const create = async (req, res, next) => {
 
 const update = async (req, res, next) => {
   try {
-    const { id_terapeuta, id_sucursal, fecha, duracion_minutos, estado, notas_sesion } = req.body;
-    const [result] = await db.query(
-      `UPDATE sesion SET id_terapeuta=?, id_sucursal=?, fecha=?, duracion_minutos=?,
-       estado=?, notas_sesion=? WHERE id_sesion=?`,
-      [id_terapeuta, id_sucursal, fecha, duracion_minutos, estado, notas_sesion, req.params.id]
-    );
+    const allowed = ['id_terapeuta', 'id_sucursal', 'fecha', 'duracion_minutos', 'estado', 'notas_sesion'];
+    const fields = allowed.filter(f => req.body[f] !== undefined);
+    if (!fields.length) return res.status(400).json({ error: 'No hay campos para actualizar' });
+
+    const sql = `UPDATE sesion SET ${fields.map(f => `${f}=?`).join(', ')} WHERE id_sesion=?`;
+    const params = [...fields.map(f => req.body[f]), req.params.id];
+    const [result] = await db.query(sql, params);
     if (!result.affectedRows) return res.status(404).json({ error: 'Sesión no encontrada' });
     res.json({ message: 'Sesión actualizada' });
   } catch (err) { next(err); }
@@ -195,4 +199,64 @@ const getStockSucursal = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getById, getInsumos, create, update, addInsumo, removeInsumo, remove, getStockSucursal };
+const uploadArchivo = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo' });
+
+    const { id } = req.params;
+    const [rows] = await db.query('SELECT archivo_path FROM sesion WHERE id_sesion = ?', [id]);
+    if (!rows.length) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: 'Sesión no encontrada' });
+    }
+
+    // Elimina archivo anterior si existe
+    if (rows[0].archivo_path) {
+      const prev = path.join(__dirname, '../../', rows[0].archivo_path);
+      if (fs.existsSync(prev)) fs.unlinkSync(prev);
+    }
+
+    const relativePath = path.join('uploads/sesiones', req.file.filename).replace(/\\/g, '/');
+    await db.query(
+      'UPDATE sesion SET archivo_path = ?, archivo_nombre = ? WHERE id_sesion = ?',
+      [relativePath, req.file.originalname, id]
+    );
+
+    res.json({ archivo_nombre: req.file.originalname, archivo_path: relativePath });
+  } catch (err) { next(err); }
+};
+
+const downloadArchivo = async (req, res, next) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT archivo_path, archivo_nombre FROM sesion WHERE id_sesion = ?',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Sesión no encontrada' });
+    if (!rows[0].archivo_path) return res.status(404).json({ error: 'Esta sesión no tiene archivo adjunto' });
+
+    const fullPath = path.join(__dirname, '../../', rows[0].archivo_path);
+    if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'Archivo no encontrado en disco' });
+
+    res.download(fullPath, rows[0].archivo_nombre);
+  } catch (err) { next(err); }
+};
+
+const deleteArchivo = async (req, res, next) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT archivo_path FROM sesion WHERE id_sesion = ?',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Sesión no encontrada' });
+    if (!rows[0].archivo_path) return res.status(404).json({ error: 'Esta sesión no tiene archivo adjunto' });
+
+    const fullPath = path.join(__dirname, '../../', rows[0].archivo_path);
+    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+
+    await db.query('UPDATE sesion SET archivo_path = NULL, archivo_nombre = NULL WHERE id_sesion = ?', [req.params.id]);
+    res.json({ message: 'Archivo eliminado' });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getAll, getById, getInsumos, create, update, addInsumo, removeInsumo, remove, getStockSucursal, uploadArchivo, downloadArchivo, deleteArchivo };
