@@ -13,4 +13,10 @@ router.post('/',              ...adminOnly, ctrl.create);
 router.put('/:id',            ...adminOnly, ctrl.update);
 router.delete('/:id',         ...adminOnly, ctrl.remove);
 
+// Responsables
+router.get('/:id/responsables',              ...adminOnly, ctrl.getResponsables);
+router.post('/:id/responsables',             ...adminOnly, ctrl.createResponsable);
+router.put('/:id/responsables/:id_resp',     ...adminOnly, ctrl.updateResponsable);
+router.delete('/:id/responsables/:id_resp',  ...adminOnly, ctrl.removeResponsable);
+
 module.exports = router;

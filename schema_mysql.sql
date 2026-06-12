@@ -22,12 +22,25 @@ CREATE TABLE sucursal (
     id_empresa      INT NOT NULL,
     nombre          VARCHAR(150) NOT NULL,
     direccion       VARCHAR(255),
-    telefono        VARCHAR(20),
-    email           VARCHAR(100),
     activa          BOOLEAN DEFAULT TRUE,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_sucursal_empresa FOREIGN KEY (id_empresa) REFERENCES empresa(id_empresa) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- 2b. RESPONSABLE_SUCURSAL
+-- ============================================================
+CREATE TABLE responsable_sucursal (
+    id_responsable  INT AUTO_INCREMENT PRIMARY KEY,
+    id_sucursal     INT NOT NULL,
+    nombre          VARCHAR(200) NOT NULL,
+    cargo           VARCHAR(100),
+    email           VARCHAR(100),
+    celular         VARCHAR(20),
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_resp_sucursal FOREIGN KEY (id_sucursal) REFERENCES sucursal(id_sucursal) ON DELETE CASCADE
 );
 
 -- ============================================================
@@ -56,8 +69,14 @@ CREATE TABLE paciente (
     id_persona      INT NOT NULL UNIQUE,
     id_sucursal     INT NOT NULL,
     prevision       VARCHAR(100),
-    contacto_emergencia_nombre  VARCHAR(200),
-    contacto_emergencia_telefono VARCHAR(20),
+    contacto_emergencia_nombre       VARCHAR(200),
+    contacto_emergencia_parentesco   VARCHAR(100),
+    contacto_emergencia_telefono     VARCHAR(20),
+    contacto_emergencia_email        VARCHAR(100),
+    contacto2_nombre                 VARCHAR(200),
+    contacto2_parentesco             VARCHAR(100),
+    contacto2_telefono               VARCHAR(20),
+    contacto2_email                  VARCHAR(100),
     activo          BOOLEAN DEFAULT TRUE,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -257,6 +276,25 @@ CREATE TABLE transferencia_stock (
     CONSTRAINT fk_ts_proveedor FOREIGN KEY (id_stock_proveedor) REFERENCES stock_proveedor(id_stock_proveedor),
     CONSTRAINT fk_ts_stock     FOREIGN KEY (id_stock)           REFERENCES stock_insumo(id_stock),
     CONSTRAINT fk_ts_usuario   FOREIGN KEY (id_usuario)         REFERENCES usuario(id_usuario)
+);
+
+-- ============================================================
+-- 17. SOLICITUD_INSUMO (terapeuta → admin)
+-- ============================================================
+CREATE TABLE solicitud_insumo (
+    id_solicitud        INT AUTO_INCREMENT PRIMARY KEY,
+    id_sucursal         INT NOT NULL,
+    id_stock            INT NOT NULL,
+    id_terapeuta        INT NOT NULL,
+    cantidad            DECIMAL(10,2) NOT NULL,
+    estado              ENUM('pendiente','aprobada','rechazada') DEFAULT 'pendiente',
+    notas               VARCHAR(255),
+    notas_respuesta     VARCHAR(255),
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sol_sucursal  FOREIGN KEY (id_sucursal)  REFERENCES sucursal(id_sucursal),
+    CONSTRAINT fk_sol_stock     FOREIGN KEY (id_stock)     REFERENCES stock_insumo(id_stock),
+    CONSTRAINT fk_sol_terapeuta FOREIGN KEY (id_terapeuta) REFERENCES terapeuta(id_terapeuta)
 );
 
 -- ============================================================
