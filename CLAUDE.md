@@ -63,12 +63,13 @@ schema_mysql.sql   ← DDL completo para MySQL
 
 ## Base de datos
 
-### Tablas (16 total)
+### Tablas (17 total)
 
 | Tabla | Descripción |
 |---|---|
 | `empresa` | Organización raíz |
-| `sucursal` | Branches de la empresa |
+| `sucursal` | Branches de la empresa (sin telefono/email) |
+| `responsable_sucursal` | Encargados por sucursal: nombre, cargo, email, celular (N por sucursal) |
 | `persona` | Tabla base de datos personales (RUT único) |
 | `paciente` | Subtipo de persona — 1:1 con persona |
 | `terapeuta` | Subtipo de persona — 1:1 con persona |
