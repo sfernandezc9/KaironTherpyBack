@@ -6,7 +6,7 @@ const getAll = async (req, res, next) => {
     if (req.user.rol === 'terapeuta') {
       [rows] = await db.query(`
         SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-               p.telefono, p.email, p.direccion, s.nombre AS nombre_sucursal
+               p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal
         FROM paciente pac
         JOIN persona  p ON p.id_persona  = pac.id_persona
         JOIN sucursal s ON s.id_sucursal = pac.id_sucursal
@@ -19,7 +19,7 @@ const getAll = async (req, res, next) => {
     } else {
       [rows] = await db.query(`
         SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-               p.telefono, p.email, p.direccion, s.nombre AS nombre_sucursal
+               p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal
         FROM paciente pac
         JOIN persona  p ON p.id_persona   = pac.id_persona
         JOIN sucursal s ON s.id_sucursal  = pac.id_sucursal
@@ -34,7 +34,7 @@ const getById = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
       SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-             p.telefono, p.email, p.direccion, s.nombre AS nombre_sucursal
+             p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal
       FROM paciente pac
       JOIN persona  p ON p.id_persona  = pac.id_persona
       JOIN sucursal s ON s.id_sucursal = pac.id_sucursal
@@ -110,14 +110,14 @@ const create = async (req, res, next) => {
     await conn.beginTransaction();
 
     const {
-      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion,
+      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
       id_sucursal, prevision, contacto_emergencia_nombre, contacto_emergencia_telefono
     } = req.body;
 
     const [personaResult] = await conn.query(
-      `INSERT INTO persona (rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion]
+      `INSERT INTO persona (rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad || null]
     );
     const id_persona = personaResult.insertId;
 
@@ -143,7 +143,7 @@ const update = async (req, res, next) => {
     await conn.beginTransaction();
 
     const {
-      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion,
+      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
       id_sucursal, prevision, contacto_emergencia_nombre, contacto_emergencia_telefono, activo
     } = req.body;
 
@@ -152,8 +152,8 @@ const update = async (req, res, next) => {
 
     await conn.query(
       `UPDATE persona SET rut=?, nombres=?, apellidos=?, fecha_nacimiento=?, genero=?,
-       telefono=?, email=?, direccion=? WHERE id_persona=?`,
-      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, pac[0].id_persona]
+       telefono=?, email=?, direccion=?, nacionalidad=? WHERE id_persona=?`,
+      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad || null, pac[0].id_persona]
     );
 
     await conn.query(

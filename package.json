@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "seed": "node scripts/seed-usuarios.js"
+    "seed": "node scripts/seed-usuarios.js",
+    "migrate:especialidades": "node scripts/migrate-especialidades.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

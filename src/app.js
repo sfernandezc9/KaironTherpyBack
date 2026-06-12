@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -24,6 +25,11 @@ app.use('/api/informes',   require('./routes/informe.routes'));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use(errorHandler);
+
+app.use(express.static(path.join(__dirname, '../dist')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`KaironTherapy API → http://localhost:${PORT}`));

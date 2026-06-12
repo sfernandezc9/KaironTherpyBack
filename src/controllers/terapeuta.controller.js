@@ -4,7 +4,7 @@ const getAll = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
       SELECT t.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-             p.telefono, p.email, p.direccion
+             p.telefono, p.email, p.direccion, p.nacionalidad
       FROM terapeuta t
       JOIN persona p ON p.id_persona = t.id_persona
       ORDER BY p.apellidos, p.nombres
@@ -17,7 +17,7 @@ const getById = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
       SELECT t.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-             p.telefono, p.email, p.direccion
+             p.telefono, p.email, p.direccion, p.nacionalidad
       FROM terapeuta t
       JOIN persona p ON p.id_persona = t.id_persona
       WHERE t.id_terapeuta = ?
@@ -100,20 +100,22 @@ const create = async (req, res, next) => {
     await conn.beginTransaction();
 
     const {
-      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion,
-      especialidad, registro_profesional
+      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
+      especialidad_1, especialidad_2, especialidad_3, registro_profesional
     } = req.body;
 
+    if (!especialidad_1) { await conn.rollback(); return res.status(400).json({ error: 'especialidad_1 es obligatoria' }); }
+
     const [personaResult] = await conn.query(
-      `INSERT INTO persona (rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion]
+      `INSERT INTO persona (rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad || null]
     );
     const id_persona = personaResult.insertId;
 
     const [terapeutaResult] = await conn.query(
-      'INSERT INTO terapeuta (id_persona, especialidad, registro_profesional) VALUES (?, ?, ?)',
-      [id_persona, especialidad, registro_profesional]
+      'INSERT INTO terapeuta (id_persona, especialidad_1, especialidad_2, especialidad_3, registro_profesional) VALUES (?, ?, ?, ?, ?)',
+      [id_persona, especialidad_1, especialidad_2 || null, especialidad_3 || null, registro_profesional]
     );
 
     await conn.commit();
@@ -132,22 +134,24 @@ const update = async (req, res, next) => {
     await conn.beginTransaction();
 
     const {
-      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion,
-      especialidad, registro_profesional, activo
+      rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
+      especialidad_1, especialidad_2, especialidad_3, registro_profesional, activo
     } = req.body;
 
     const [ter] = await conn.query('SELECT id_persona FROM terapeuta WHERE id_terapeuta = ?', [req.params.id]);
     if (!ter.length) { await conn.rollback(); return res.status(404).json({ error: 'Terapeuta no encontrado' }); }
 
+    if (especialidad_1 !== undefined && !especialidad_1) { await conn.rollback(); return res.status(400).json({ error: 'especialidad_1 no puede estar vacía' }); }
+
     await conn.query(
       `UPDATE persona SET rut=?, nombres=?, apellidos=?, fecha_nacimiento=?, genero=?,
-       telefono=?, email=?, direccion=? WHERE id_persona=?`,
-      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, ter[0].id_persona]
+       telefono=?, email=?, direccion=?, nacionalidad=? WHERE id_persona=?`,
+      [rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad || null, ter[0].id_persona]
     );
 
     await conn.query(
-      'UPDATE terapeuta SET especialidad=?, registro_profesional=?, activo=? WHERE id_terapeuta=?',
-      [especialidad, registro_profesional, activo, req.params.id]
+      'UPDATE terapeuta SET especialidad_1=?, especialidad_2=?, especialidad_3=?, registro_profesional=?, activo=? WHERE id_terapeuta=?',
+      [especialidad_1, especialidad_2 || null, especialidad_3 || null, registro_profesional, activo, req.params.id]
     );
 
     await conn.commit();

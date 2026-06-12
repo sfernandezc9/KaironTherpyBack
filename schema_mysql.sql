@@ -1,9 +1,4 @@
--- ============================================================
--- MODELO SQL - SISTEMA DE GESTIÓN CLÍNICA (MySQL)
--- ============================================================
 
-CREATE DATABASE IF NOT EXISTS kairon_therapy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE kairon_therapy;
 
 -- ============================================================
 -- 1. EMPRESA
@@ -48,6 +43,7 @@ CREATE TABLE persona (
     telefono        VARCHAR(20),
     email           VARCHAR(100),
     direccion       VARCHAR(255),
+    nacionalidad    VARCHAR(100),
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -75,7 +71,9 @@ CREATE TABLE paciente (
 CREATE TABLE terapeuta (
     id_terapeuta    INT AUTO_INCREMENT PRIMARY KEY,
     id_persona      INT NOT NULL UNIQUE,
-    especialidad    VARCHAR(150),
+    especialidad_1  VARCHAR(150) NOT NULL,
+    especialidad_2  VARCHAR(150),
+    especialidad_3  VARCHAR(150),
     registro_profesional VARCHAR(50),
     activo          BOOLEAN DEFAULT TRUE,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
