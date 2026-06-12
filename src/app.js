@@ -20,7 +20,8 @@ app.use('/api/stock',      require('./routes/stock.routes'));
 app.use('/api/fichas',     require('./routes/fichaClinica.routes'));
 app.use('/api/sesiones',   require('./routes/sesion.routes'));
 app.use('/api/historial',  require('./routes/historial.routes'));
-app.use('/api/informes',   require('./routes/informe.routes'));
+app.use('/api/informes',    require('./routes/informe.routes'));
+app.use('/api/solicitudes', require('./routes/solicitud.routes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
