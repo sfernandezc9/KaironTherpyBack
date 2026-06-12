@@ -111,7 +111,9 @@ const create = async (req, res, next) => {
 
     const {
       rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
-      id_sucursal, prevision, contacto_emergencia_nombre, contacto_emergencia_telefono
+      id_sucursal, prevision,
+      contacto_emergencia_nombre, contacto_emergencia_parentesco, contacto_emergencia_telefono, contacto_emergencia_email,
+      contacto2_nombre, contacto2_parentesco, contacto2_telefono, contacto2_email,
     } = req.body;
 
     const [personaResult] = await conn.query(
@@ -122,9 +124,16 @@ const create = async (req, res, next) => {
     const id_persona = personaResult.insertId;
 
     const [pacienteResult] = await conn.query(
-      `INSERT INTO paciente (id_persona, id_sucursal, prevision, contacto_emergencia_nombre, contacto_emergencia_telefono)
-       VALUES (?, ?, ?, ?, ?)`,
-      [id_persona, id_sucursal, prevision, contacto_emergencia_nombre, contacto_emergencia_telefono]
+      `INSERT INTO paciente (
+        id_persona, id_sucursal, prevision,
+        contacto_emergencia_nombre, contacto_emergencia_parentesco, contacto_emergencia_telefono, contacto_emergencia_email,
+        contacto2_nombre, contacto2_parentesco, contacto2_telefono, contacto2_email
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id_persona, id_sucursal, prevision,
+        contacto_emergencia_nombre, contacto_emergencia_parentesco || null, contacto_emergencia_telefono, contacto_emergencia_email || null,
+        contacto2_nombre || null, contacto2_parentesco || null, contacto2_telefono || null, contacto2_email || null,
+      ]
     );
 
     await conn.commit();
@@ -144,7 +153,9 @@ const update = async (req, res, next) => {
 
     const {
       rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
-      id_sucursal, prevision, contacto_emergencia_nombre, contacto_emergencia_telefono, activo
+      id_sucursal, prevision, activo,
+      contacto_emergencia_nombre, contacto_emergencia_parentesco, contacto_emergencia_telefono, contacto_emergencia_email,
+      contacto2_nombre, contacto2_parentesco, contacto2_telefono, contacto2_email,
     } = req.body;
 
     const [pac] = await conn.query('SELECT id_persona FROM paciente WHERE id_paciente = ?', [req.params.id]);
@@ -157,9 +168,17 @@ const update = async (req, res, next) => {
     );
 
     await conn.query(
-      `UPDATE paciente SET id_sucursal=?, prevision=?, contacto_emergencia_nombre=?,
-       contacto_emergencia_telefono=?, activo=? WHERE id_paciente=?`,
-      [id_sucursal, prevision, contacto_emergencia_nombre, contacto_emergencia_telefono, activo, req.params.id]
+      `UPDATE paciente SET id_sucursal=?, prevision=?,
+        contacto_emergencia_nombre=?, contacto_emergencia_parentesco=?, contacto_emergencia_telefono=?, contacto_emergencia_email=?,
+        contacto2_nombre=?, contacto2_parentesco=?, contacto2_telefono=?, contacto2_email=?,
+        activo=?
+       WHERE id_paciente=?`,
+      [
+        id_sucursal, prevision,
+        contacto_emergencia_nombre, contacto_emergencia_parentesco || null, contacto_emergencia_telefono, contacto_emergencia_email || null,
+        contacto2_nombre || null, contacto2_parentesco || null, contacto2_telefono || null, contacto2_email || null,
+        activo, req.params.id,
+      ]
     );
 
     await conn.commit();
