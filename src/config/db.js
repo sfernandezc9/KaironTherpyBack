@@ -10,7 +10,14 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  timezone: '-04:00'
+  timezone: '-04:00',
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
+});
+
+// Prevent unhandled error events from crashing the process
+pool.on('error', (err) => {
+  console.error('[DB pool error]', err.code, err.message);
 });
 
 module.exports = pool;

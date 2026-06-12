@@ -187,11 +187,12 @@ const getStockSucursal = async (req, res, next) => {
       }
     }
 
+    const paraSolicitud = req.query.para_solicitud === '1';
     const [rows] = await db.query(
       `SELECT si.id_stock, i.id_insumo, i.nombre, i.unidad_medida, si.cantidad, si.cantidad_minima
        FROM stock_insumo si
        JOIN insumo i ON i.id_insumo = si.id_insumo
-       WHERE si.id_sucursal = ? AND si.cantidad > 0
+       WHERE si.id_sucursal = ?${paraSolicitud ? '' : ' AND si.cantidad > 0'}
        ORDER BY i.nombre`,
       [id_sucursal]
     );
