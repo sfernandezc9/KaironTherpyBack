@@ -31,4 +31,4 @@ jobs:
       - name: Restart Passenger
         run: |
           curl --ftp-create-dirs -T /dev/null \
-            "ftp://deploy@kairontherapy.com:${{ secrets.FTP_PASSWORD_COM }}@201.148.104.166/kairontherapy/tmp/restart.txt"
+            "ftp://deploy%40kairontherapy.com:${{ secrets.FTP_PASSWORD_COM }}@201.148.104.166/kairontherapy/tmp/restart.txt"
