@@ -14,7 +14,7 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: 201.148.104.166
-          username: kairont1
+          username: deploy@kairontherapy.com
           password: ${{ secrets.FTP_PASSWORD_COM }}
           protocol: ftp
           port: 21
@@ -31,4 +31,4 @@ jobs:
       - name: Restart Passenger
         run: |
           curl --ftp-create-dirs -T /dev/null \
-            "ftp://kairont1:${{ secrets.FTP_PASSWORD_COM }}@201.148.104.166/kairontherapy/tmp/restart.txt"
+            "ftp://deploy@kairontherapy.com:${{ secrets.FTP_PASSWORD_COM }}@201.148.104.166/kairontherapy/tmp/restart.txt"
