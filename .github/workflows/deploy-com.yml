@@ -1,0 +1,34 @@
+name: Deploy Backend (.com)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: 201.148.104.166
+          username: kairont1
+          password: ${{ secrets.FTP_PASSWORD_COM }}
+          protocol: ftp
+          port: 21
+          local-dir: ./
+          server-dir: kairontherapy/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.env*
+            **/dist/**
+            **/.github/**
+
+      - name: Restart Passenger
+        run: |
+          curl --ftp-create-dirs -T /dev/null \
+            "ftp://kairont1:${{ secrets.FTP_PASSWORD_COM }}@201.148.104.166/kairontherapy/tmp/restart.txt"
