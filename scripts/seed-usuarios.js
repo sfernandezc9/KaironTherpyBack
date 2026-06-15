@@ -29,7 +29,7 @@ const usuarios = [
       rol: 'terapeuta',
     },
     terapeuta: {
-      especialidad: 'Kinesiología',
+      especialidad_1: 'Kinesiología',
       registro_profesional: 'KIN-00001',
     },
   },
@@ -76,8 +76,8 @@ async function seed() {
         const [t] = await conn.query('SELECT id_terapeuta FROM terapeuta WHERE id_persona = ?', [id_persona]);
         if (!t.length) {
           await conn.query(
-            'INSERT INTO terapeuta (id_persona, especialidad, registro_profesional) VALUES (?, ?, ?)',
-            [id_persona, terapeuta.especialidad, terapeuta.registro_profesional]
+            'INSERT INTO terapeuta (id_persona, especialidad_1, registro_profesional) VALUES (?, ?, ?)',
+            [id_persona, terapeuta.especialidad_1, terapeuta.registro_profesional]
           );
           console.log(`  Terapeuta creado`);
         }

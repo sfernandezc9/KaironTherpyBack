@@ -4,9 +4,11 @@ const getAll = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
       SELECT t.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-             p.telefono, p.email, p.direccion, p.nacionalidad
+             p.telefono, p.email, p.direccion, p.nacionalidad,
+             u.ultimo_login
       FROM terapeuta t
       JOIN persona p ON p.id_persona = t.id_persona
+      LEFT JOIN usuario u ON u.id_persona = t.id_persona
       ORDER BY p.apellidos, p.nombres
     `);
     res.json(rows);
@@ -17,9 +19,11 @@ const getById = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
       SELECT t.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-             p.telefono, p.email, p.direccion, p.nacionalidad
+             p.telefono, p.email, p.direccion, p.nacionalidad,
+             u.ultimo_login
       FROM terapeuta t
       JOIN persona p ON p.id_persona = t.id_persona
+      LEFT JOIN usuario u ON u.id_persona = t.id_persona
       WHERE t.id_terapeuta = ?
     `, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Terapeuta no encontrado' });
