@@ -71,11 +71,14 @@ const getInsumos = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado, notas_sesion } = req.body;
+    const { id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado, notas_sesion,
+            observaciones, tipo_observacion, nuevas_indicaciones } = req.body;
     const [result] = await db.query(
-      `INSERT INTO sesion (id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado, notas_sesion)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id_ficha, id_terapeuta, id_sucursal, fecha || new Date(), duracion_minutos, estado || 'realizada', notas_sesion]
+      `INSERT INTO sesion (id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado,
+                           notas_sesion, observaciones, tipo_observacion, nuevas_indicaciones)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id_ficha, id_terapeuta, id_sucursal, fecha || new Date(), duracion_minutos, estado || 'realizada',
+       notas_sesion, observaciones || null, tipo_observacion || null, nuevas_indicaciones || null]
     );
     res.status(201).json({ id_sesion: result.insertId });
   } catch (err) { next(err); }
@@ -83,7 +86,8 @@ const create = async (req, res, next) => {
 
 const update = async (req, res, next) => {
   try {
-    const allowed = ['id_terapeuta', 'id_sucursal', 'fecha', 'duracion_minutos', 'estado', 'notas_sesion'];
+    const allowed = ['id_terapeuta', 'id_sucursal', 'fecha', 'duracion_minutos', 'estado', 'notas_sesion',
+                     'observaciones', 'tipo_observacion', 'nuevas_indicaciones'];
     const fields = allowed.filter(f => req.body[f] !== undefined);
     if (!fields.length) return res.status(400).json({ error: 'No hay campos para actualizar' });
 
