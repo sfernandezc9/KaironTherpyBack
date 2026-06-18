@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mysql:
     image: mysql:8.0
@@ -7,64 +5,26 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: kairon_therapy
+      MYSQL_DATABASE: kairon_dev
       MYSQL_USER: kairon
       MYSQL_PASSWORD: kairon123
     ports:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./schema_mysql.sql:/docker-entrypoint-initdb.d/schema_mysql.sql
+      - ./schema_mysql.sql:/docker-entrypoint-initdb.d/00_schema.sql
+      - ./scripts/migrate-responsables.sql:/docker-entrypoint-initdb.d/01_migrate-responsables.sql
+      - ./scripts/migrate-responsables-empresa.sql:/docker-entrypoint-initdb.d/02_migrate-responsables-empresa.sql
+      - ./scripts/migrate-solicitudes.sql:/docker-entrypoint-initdb.d/03_migrate-solicitudes.sql
+      - ./scripts/migrate-sesion-archivo.sql:/docker-entrypoint-initdb.d/04_migrate-sesion-archivo.sql
+      - ./scripts/migrate-sesion-insumo-fecha.sql:/docker-entrypoint-initdb.d/05_migrate-sesion-insumo-fecha.sql
+      - ./scripts/migrate-terapeuta-sucursal-constraint.sql:/docker-entrypoint-initdb.d/06_migrate-terapeuta-sucursal.sql
+      - ./scripts/migrate-contactos-emergencia.sql:/docker-entrypoint-initdb.d/07_migrate-contactos.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
       interval: 10s
       timeout: 5s
-      retries: 5
-
-  api:
-    image: node:20-alpine
-    container_name: kairon_api
-    restart: unless-stopped
-    working_dir: /app
-    volumes:
-      - .:/app
-      - /app/node_modules
-    ports:
-      - "3000:3000"
-    environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: kairon
-      DB_PASSWORD: kairon123
-      DB_NAME: kairon_therapy
-      PORT: 3000
-      JWT_SECRET: kairon_secret_dev_2026
-      JWT_EXPIRES_IN: 8h
-    depends_on:
-      mysql:
-        condition: service_healthy
-    command: sh -c "npm install && npm run dev"
-
-  seed:
-    image: node:20-alpine
-    container_name: kairon_seed
-    working_dir: /app
-    volumes:
-      - .:/app
-      - /app/node_modules
-    environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: kairon
-      DB_PASSWORD: kairon123
-      DB_NAME: kairon_therapy
-      JWT_SECRET: kairon_secret_dev_2026
-    depends_on:
-      mysql:
-        condition: service_healthy
-    command: sh -c "npm install && node scripts/seed-usuarios.js"
-    profiles:
-      - seed
+      retries: 10
 
 volumes:
   mysql_data:
