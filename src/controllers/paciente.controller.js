@@ -72,7 +72,12 @@ const getFicha = async (req, res, next) => {
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Ficha no encontrada' });
-    res.json(rows[0]);
+    const ficha = rows[0];
+    const [consumos] = await db.query('SELECT * FROM ficha_consumo WHERE id_ficha = ?', [ficha.id_ficha]);
+    const [tratamientos] = await db.query('SELECT * FROM tratamiento_anterior WHERE id_ficha = ?', [ficha.id_ficha]);
+    ficha.consumos = consumos;
+    ficha.tratamientos = tratamientos;
+    res.json(ficha);
   } catch (err) { next(err); }
 };
 
@@ -112,6 +117,8 @@ const create = async (req, res, next) => {
     const {
       rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
       id_sucursal, prevision,
+      estado_civil, numero_hijos, escolaridad, profesion_ocupacion, comuna, empresa_nombre,
+      apoderado_nombre, apoderado_parentesco, apoderado_edad, apoderado_direccion, apoderado_telefono,
       contacto_emergencia_nombre, contacto_emergencia_parentesco, contacto_emergencia_telefono, contacto_emergencia_email,
       contacto2_nombre, contacto2_parentesco, contacto2_telefono, contacto2_email,
     } = req.body;
@@ -126,11 +133,15 @@ const create = async (req, res, next) => {
     const [pacienteResult] = await conn.query(
       `INSERT INTO paciente (
         id_persona, id_sucursal, prevision,
+        estado_civil, numero_hijos, escolaridad, profesion_ocupacion, comuna, empresa_nombre,
+        apoderado_nombre, apoderado_parentesco, apoderado_edad, apoderado_direccion, apoderado_telefono,
         contacto_emergencia_nombre, contacto_emergencia_parentesco, contacto_emergencia_telefono, contacto_emergencia_email,
         contacto2_nombre, contacto2_parentesco, contacto2_telefono, contacto2_email
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id_persona, id_sucursal, prevision,
+        estado_civil || null, numero_hijos ?? null, escolaridad || null, profesion_ocupacion || null, comuna || null, empresa_nombre || null,
+        apoderado_nombre || null, apoderado_parentesco || null, apoderado_edad ?? null, apoderado_direccion || null, apoderado_telefono || null,
         contacto_emergencia_nombre, contacto_emergencia_parentesco || null, contacto_emergencia_telefono, contacto_emergencia_email || null,
         contacto2_nombre || null, contacto2_parentesco || null, contacto2_telefono || null, contacto2_email || null,
       ]
@@ -154,6 +165,8 @@ const update = async (req, res, next) => {
     const {
       rut, nombres, apellidos, fecha_nacimiento, genero, telefono, email, direccion, nacionalidad,
       id_sucursal, prevision, activo,
+      estado_civil, numero_hijos, escolaridad, profesion_ocupacion, comuna, empresa_nombre,
+      apoderado_nombre, apoderado_parentesco, apoderado_edad, apoderado_direccion, apoderado_telefono,
       contacto_emergencia_nombre, contacto_emergencia_parentesco, contacto_emergencia_telefono, contacto_emergencia_email,
       contacto2_nombre, contacto2_parentesco, contacto2_telefono, contacto2_email,
     } = req.body;
@@ -169,12 +182,16 @@ const update = async (req, res, next) => {
 
     await conn.query(
       `UPDATE paciente SET id_sucursal=?, prevision=?,
+        estado_civil=?, numero_hijos=?, escolaridad=?, profesion_ocupacion=?, comuna=?, empresa_nombre=?,
+        apoderado_nombre=?, apoderado_parentesco=?, apoderado_edad=?, apoderado_direccion=?, apoderado_telefono=?,
         contacto_emergencia_nombre=?, contacto_emergencia_parentesco=?, contacto_emergencia_telefono=?, contacto_emergencia_email=?,
         contacto2_nombre=?, contacto2_parentesco=?, contacto2_telefono=?, contacto2_email=?,
         activo=?
        WHERE id_paciente=?`,
       [
         id_sucursal, prevision,
+        estado_civil || null, numero_hijos ?? null, escolaridad || null, profesion_ocupacion || null, comuna || null, empresa_nombre || null,
+        apoderado_nombre || null, apoderado_parentesco || null, apoderado_edad ?? null, apoderado_direccion || null, apoderado_telefono || null,
         contacto_emergencia_nombre, contacto_emergencia_parentesco || null, contacto_emergencia_telefono, contacto_emergencia_email || null,
         contacto2_nombre || null, contacto2_parentesco || null, contacto2_telefono || null, contacto2_email || null,
         activo, req.params.id,
