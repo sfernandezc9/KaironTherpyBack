@@ -131,8 +131,22 @@ const removeResponsable = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getPacientes = async (req, res, next) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT p.id_paciente, per.rut, per.nombres, per.apellidos,
+             per.email, per.telefono
+      FROM paciente p
+      JOIN persona per ON per.id_persona = p.id_persona
+      WHERE p.id_sucursal = ?
+      ORDER BY per.apellidos, per.nombres
+    `, [req.params.id]);
+    res.json(rows);
+  } catch (err) { next(err); }
+};
+
 module.exports = {
-  getAll, getById, getTerapeutas, getStock,
+  getAll, getById, getTerapeutas, getStock, getPacientes,
   create, update, remove,
   getResponsables, createResponsable, updateResponsable, removeResponsable,
 };

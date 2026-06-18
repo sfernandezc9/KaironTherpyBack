@@ -16,21 +16,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const fileFilter = (_req, file, cb) => {
-  const allowed = [
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-excel'
-  ];
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (allowed.includes(file.mimetype) || ext === '.xlsx' || ext === '.xls') {
-    cb(null, true);
-  } else {
-    cb(new Error('Solo se permiten archivos Excel (.xlsx, .xls)'));
-  }
-};
-
 module.exports = multer({
   storage,
-  fileFilter,
   limits: { fileSize: 10 * 1024 * 1024 } // 10 MB
 });
