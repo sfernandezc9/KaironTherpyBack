@@ -20,10 +20,17 @@ const getAll = async (req, res, next) => {
       WHERE 1=1
     `;
     const params = [];
-    // Terapeuta solo ve sus propias sesiones
-    const filtroTerapeuta = req.user.rol === 'terapeuta' ? req.user.id_terapeuta : id_terapeuta;
-    if (id_sucursal)      { sql += ' AND ses.id_sucursal = ?';  params.push(id_sucursal); }
-    if (filtroTerapeuta)  { sql += ' AND ses.id_terapeuta = ?'; params.push(filtroTerapeuta); }
+    if (id_sucursal) { sql += ' AND ses.id_sucursal = ?'; params.push(id_sucursal); }
+    if (req.user.rol === 'terapeuta') {
+      sql += ` AND ses.id_sucursal IN (
+        SELECT id_sucursal FROM terapeuta_sucursal
+        WHERE id_terapeuta = ? AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
+      )`;
+      params.push(req.user.id_terapeuta);
+    } else if (id_terapeuta) {
+      sql += ' AND ses.id_terapeuta = ?';
+      params.push(id_terapeuta);
+    }
     if (desde)        { sql += ' AND ses.fecha >= ?';       params.push(desde); }
     if (hasta)        { sql += ' AND ses.fecha <= ?';       params.push(hasta); }
     if (estado)       { sql += ' AND ses.estado = ?';       params.push(estado); }
@@ -72,13 +79,17 @@ const getInsumos = async (req, res, next) => {
 const create = async (req, res, next) => {
   try {
     const { id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado, notas_sesion,
-            observaciones, tipo_observacion, nuevas_indicaciones } = req.body;
+            observaciones, tipo_observacion, nuevas_indicaciones,
+            consumos_adicciones, ley_karin, psicosocial, prevencion_suicidio, tipo_intervencion } = req.body;
     const [result] = await db.query(
       `INSERT INTO sesion (id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado,
-                           notas_sesion, observaciones, tipo_observacion, nuevas_indicaciones)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                           notas_sesion, observaciones, tipo_observacion, nuevas_indicaciones,
+                           consumos_adicciones, ley_karin, psicosocial, prevencion_suicidio, tipo_intervencion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id_ficha, id_terapeuta, id_sucursal, fecha || new Date(), duracion_minutos, estado || 'realizada',
-       notas_sesion, observaciones || null, tipo_observacion || null, nuevas_indicaciones || null]
+       notas_sesion, observaciones || null, tipo_observacion || null, nuevas_indicaciones || null,
+       consumos_adicciones ?? false, ley_karin ?? false, psicosocial ?? false, prevencion_suicidio ?? false,
+       tipo_intervencion || null]
     );
     res.status(201).json({ id_sesion: result.insertId });
   } catch (err) { next(err); }
@@ -87,7 +98,8 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const allowed = ['id_terapeuta', 'id_sucursal', 'fecha', 'duracion_minutos', 'estado', 'notas_sesion',
-                     'observaciones', 'tipo_observacion', 'nuevas_indicaciones'];
+                     'observaciones', 'tipo_observacion', 'nuevas_indicaciones',
+                     'consumos_adicciones', 'ley_karin', 'psicosocial', 'prevencion_suicidio', 'tipo_intervencion'];
     const fields = allowed.filter(f => req.body[f] !== undefined);
     if (!fields.length) return res.status(400).json({ error: 'No hay campos para actualizar' });
 

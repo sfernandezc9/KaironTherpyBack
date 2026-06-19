@@ -20,6 +20,7 @@ services:
       - ./scripts/migrate-sesion-insumo-fecha.sql:/docker-entrypoint-initdb.d/05_migrate-sesion-insumo-fecha.sql
       - ./scripts/migrate-terapeuta-sucursal-constraint.sql:/docker-entrypoint-initdb.d/06_migrate-terapeuta-sucursal.sql
       - ./scripts/migrate-contactos-emergencia.sql:/docker-entrypoint-initdb.d/07_migrate-contactos.sql
+      - ./scripts/migrate-sesion-flags.sql:/docker-entrypoint-initdb.d/08_migrate-sesion-flags.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
       interval: 10s
