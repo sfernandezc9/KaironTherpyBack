@@ -6,7 +6,12 @@ const getAll = async (req, res, next) => {
     if (req.user.rol === 'terapeuta') {
       [rows] = await db.query(`
         SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-               p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal
+               p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal,
+               EXISTS (
+                 SELECT 1 FROM sesion ses
+                 JOIN ficha_clinica fc ON fc.id_ficha = ses.id_ficha
+                 WHERE fc.id_paciente = pac.id_paciente AND ses.estado = 'de_alta'
+               ) AS de_alta
         FROM paciente pac
         JOIN persona  p ON p.id_persona  = pac.id_persona
         JOIN sucursal s ON s.id_sucursal = pac.id_sucursal
@@ -19,7 +24,12 @@ const getAll = async (req, res, next) => {
     } else {
       [rows] = await db.query(`
         SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-               p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal
+               p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal,
+               EXISTS (
+                 SELECT 1 FROM sesion ses
+                 JOIN ficha_clinica fc ON fc.id_ficha = ses.id_ficha
+                 WHERE fc.id_paciente = pac.id_paciente AND ses.estado = 'de_alta'
+               ) AS de_alta
         FROM paciente pac
         JOIN persona  p ON p.id_persona   = pac.id_persona
         JOIN sucursal s ON s.id_sucursal  = pac.id_sucursal
@@ -34,7 +44,12 @@ const getById = async (req, res, next) => {
   try {
     const [rows] = await db.query(`
       SELECT pac.*, p.rut, p.nombres, p.apellidos, p.fecha_nacimiento, p.genero,
-             p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal
+             p.telefono, p.email, p.direccion, p.nacionalidad, s.nombre AS nombre_sucursal,
+             EXISTS (
+               SELECT 1 FROM sesion ses
+               JOIN ficha_clinica fc ON fc.id_ficha = ses.id_ficha
+               WHERE fc.id_paciente = pac.id_paciente AND ses.estado = 'de_alta'
+             ) AS de_alta
       FROM paciente pac
       JOIN persona  p ON p.id_persona  = pac.id_persona
       JOIN sucursal s ON s.id_sucursal = pac.id_sucursal

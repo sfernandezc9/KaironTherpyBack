@@ -81,6 +81,16 @@ const create = async (req, res, next) => {
     const { id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado, notas_sesion,
             observaciones, tipo_observacion, nuevas_indicaciones,
             consumos_adicciones, ley_karin, psicosocial, prevencion_suicidio, tipo_intervencion } = req.body;
+
+    // Un paciente con alta no admite más sesiones
+    const [alta] = await db.query(
+      "SELECT id_sesion FROM sesion WHERE id_ficha = ? AND estado = 'de_alta' LIMIT 1",
+      [id_ficha]
+    );
+    if (alta.length) {
+      return res.status(409).json({ error: 'El paciente ya tiene un alta registrada; no se pueden crear más sesiones' });
+    }
+
     const [result] = await db.query(
       `INSERT INTO sesion (id_ficha, id_terapeuta, id_sucursal, fecha, duracion_minutos, estado,
                            notas_sesion, observaciones, tipo_observacion, nuevas_indicaciones,
@@ -102,6 +112,21 @@ const update = async (req, res, next) => {
                      'consumos_adicciones', 'ley_karin', 'psicosocial', 'prevencion_suicidio', 'tipo_intervencion'];
     const fields = allowed.filter(f => req.body[f] !== undefined);
     if (!fields.length) return res.status(400).json({ error: 'No hay campos para actualizar' });
+
+    // Solo puede existir un alta por paciente
+    if (req.body.estado === 'de_alta') {
+      const [otra] = await db.query(
+        `SELECT s2.id_sesion
+         FROM sesion s1
+         JOIN sesion s2 ON s2.id_ficha = s1.id_ficha
+         WHERE s1.id_sesion = ? AND s2.estado = 'de_alta' AND s2.id_sesion <> s1.id_sesion
+         LIMIT 1`,
+        [req.params.id]
+      );
+      if (otra.length) {
+        return res.status(409).json({ error: 'El paciente ya tiene un alta registrada' });
+      }
+    }
 
     const sql = `UPDATE sesion SET ${fields.map(f => `${f}=?`).join(', ')} WHERE id_sesion=?`;
     const params = [...fields.map(f => req.body[f]), req.params.id];
