@@ -9,6 +9,7 @@ router.get('/',                                       ...adminOnly, ctrl.getAll)
 router.get('/:id',                                    ...adminOnly, ctrl.getById);
 router.get('/:id/sucursales',                         ...adminOnly, ctrl.getSucursales);
 router.get('/:id/sesiones',                           ...adminOnly, ctrl.getSesiones);
+router.get('/:id/informe',                            ...adminOnly, ctrl.getInforme);
 router.post('/',                                      ...adminOnly, ctrl.create);
 router.post('/:id/sucursales',                        ...adminOnly, ctrl.asignarSucursal);
 router.put('/:id',                                    ...adminOnly, ctrl.update);

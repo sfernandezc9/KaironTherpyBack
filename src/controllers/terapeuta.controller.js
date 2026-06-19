@@ -176,4 +176,74 @@ const remove = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getById, getSucursales, asignarSucursal, desasignarSucursal, getSesiones, create, update, remove };
+// Informe agregado de un terapeuta: trabajadores tratados / activos / con alta
+// y casos de consumo por sustancia.
+const getInforme = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+
+    const [tRows] = await db.query(`
+      SELECT t.id_terapeuta, t.especialidad_1, t.especialidad_2, t.especialidad_3,
+             t.registro_profesional, t.activo,
+             p.rut, p.nombres, p.apellidos, p.email, p.telefono
+      FROM terapeuta t
+      JOIN persona p ON p.id_persona = t.id_persona
+      WHERE t.id_terapeuta = ?
+    `, [id]);
+    if (!tRows.length) return res.status(404).json({ error: 'Terapeuta no encontrado' });
+
+    // Pacientes tratados (con al menos una sesión del terapeuta) + flag de alta
+    const [counts] = await db.query(`
+      SELECT
+        COUNT(*)                              AS tratados,
+        COALESCE(SUM(alta), 0)                AS con_alta,
+        COALESCE(SUM(1 - alta), 0)            AS activos
+      FROM (
+        SELECT fc.id_paciente,
+          EXISTS (
+            SELECT 1 FROM sesion sx
+            JOIN ficha_clinica fx ON fx.id_ficha = sx.id_ficha
+            WHERE fx.id_paciente = fc.id_paciente AND sx.estado = 'de_alta'
+          ) AS alta
+        FROM sesion ses
+        JOIN ficha_clinica fc ON fc.id_ficha = ses.id_ficha
+        WHERE ses.id_terapeuta = ?
+        GROUP BY fc.id_paciente
+      ) t
+    `, [id]);
+
+    // Casos de consumo por sustancia entre los pacientes tratados
+    const [consumoRows] = await db.query(`
+      SELECT fco.sustancia, COUNT(DISTINCT fc.id_paciente) AS casos
+      FROM ficha_consumo fco
+      JOIN ficha_clinica fc ON fc.id_ficha = fco.id_ficha
+      WHERE fc.id_paciente IN (
+        SELECT DISTINCT fc2.id_paciente
+        FROM sesion s2
+        JOIN ficha_clinica fc2 ON fc2.id_ficha = s2.id_ficha
+        WHERE s2.id_terapeuta = ?
+      )
+      AND (
+        (fco.consumo_actual IS NOT NULL AND fco.consumo_actual <> '')
+        OR (fco.edad_inicio IS NOT NULL AND fco.edad_inicio <> '')
+      )
+      GROUP BY fco.sustancia
+    `, [id]);
+
+    const consumo = { oh: 0, thc: 0, cc: 0, pbc: 0, bzo: 0, amp: 0, otros: 0 };
+    for (const r of consumoRows) {
+      const key = String(r.sustancia).toLowerCase();
+      if (key in consumo) consumo[key] = Number(r.casos);
+    }
+
+    res.json({
+      terapeuta: tRows[0],
+      trabajadores_tratados: Number(counts[0].tratados),
+      trabajadores_activos: Number(counts[0].activos),
+      trabajadores_alta: Number(counts[0].con_alta),
+      consumo,
+    });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getAll, getById, getSucursales, asignarSucursal, desasignarSucursal, getSesiones, create, update, remove, getInforme };
