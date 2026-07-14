@@ -1,12 +1,18 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+  // Cookie httpOnly tiene prioridad; cabecera Bearer como respaldo (APIs/herramientas)
+  let token = req.cookies?.token;
+  if (!token) {
+    const header = req.headers.authorization;
+    if (header && header.startsWith('Bearer ')) {
+      token = header.slice(7);
+    }
+  }
+  if (!token) {
     return res.status(401).json({ error: 'Token requerido' });
   }
 
-  const token = header.slice(7);
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();

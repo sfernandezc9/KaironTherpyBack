@@ -4,6 +4,21 @@ const pool = require('../config/db');
 
 const ROLES = ['administrador', 'terapeuta'];
 
+// Opciones de la cookie de sesión httpOnly (no accesible por JavaScript → mitiga XSS)
+const COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 8 * 60 * 60 * 1000, // 8h, alineado con expiración del JWT
+  path: '/',
+};
+
+// Mínimo 8 caracteres, al menos una letra y un número
+function passwordValida(pw) {
+  return typeof pw === 'string' && pw.length >= 8 && /[A-Za-z]/.test(pw) && /[0-9]/.test(pw);
+}
+const PASSWORD_MSG = 'La contraseña debe tener al menos 8 caracteres, incluyendo una letra y un número';
+
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -58,6 +73,8 @@ exports.login = async (req, res, next) => {
       sucursales = rows2;
     }
 
+    res.cookie('token', token, COOKIE_OPTS);
+
     res.json({
       token,
       usuario: {
@@ -108,6 +125,11 @@ exports.me = async (req, res, next) => {
   }
 };
 
+exports.logout = (req, res) => {
+  res.clearCookie('token', { ...COOKIE_OPTS, maxAge: undefined });
+  res.json({ message: 'Sesión cerrada' });
+};
+
 exports.create = async (req, res, next) => {
   try {
     const { id_persona, email, password, rol } = req.body;
@@ -116,6 +138,9 @@ exports.create = async (req, res, next) => {
     }
     if (!ROLES.includes(rol)) {
       return res.status(400).json({ error: `Rol inválido. Opciones: ${ROLES.join(', ')}` });
+    }
+    if (!passwordValida(password)) {
+      return res.status(400).json({ error: PASSWORD_MSG });
     }
 
     const hash = await bcrypt.hash(password, 12);
@@ -136,6 +161,10 @@ exports.changePassword = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { password_actual, password_nuevo } = req.body;
+
+    if (!passwordValida(password_nuevo)) {
+      return res.status(400).json({ error: PASSWORD_MSG });
+    }
 
     // Terapeuta solo puede cambiar su propia contraseña
     if (req.user.rol === 'terapeuta' && req.user.id_usuario !== Number(id)) {

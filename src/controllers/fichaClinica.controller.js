@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { terapeutaEnSucursal, sucursalDeFicha, sucursalDePaciente } = require('../utils/access');
 
 const CAMPOS_AUDITABLES = [
   'motivo_consulta', 'antecedentes', 'alergias',
@@ -10,13 +11,22 @@ const CAMPOS_AUDITABLES = [
 
 const getAll = async (req, res, next) => {
   try {
-    const [rows] = await db.query(`
+    let sql = `
       SELECT fc.*, p.nombres, p.apellidos, p.rut
       FROM ficha_clinica fc
       JOIN paciente pac ON pac.id_paciente = fc.id_paciente
       JOIN persona  p   ON p.id_persona    = pac.id_persona
-      ORDER BY p.apellidos, p.nombres
-    `);
+    `;
+    const params = [];
+    if (req.user.rol === 'terapeuta') {
+      sql += ` WHERE pac.id_sucursal IN (
+        SELECT id_sucursal FROM terapeuta_sucursal
+        WHERE id_terapeuta = ? AND (fecha_fin IS NULL OR fecha_fin >= CURDATE())
+      )`;
+      params.push(req.user.id_terapeuta);
+    }
+    sql += ' ORDER BY p.apellidos, p.nombres';
+    const [rows] = await db.query(sql, params);
     res.json(rows);
   } catch (err) { next(err); }
 };
@@ -32,6 +42,10 @@ const getById = async (req, res, next) => {
       WHERE fc.id_ficha = ?
     `, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Ficha no encontrada' });
+    if (req.user.rol === 'terapeuta' &&
+        !(await terapeutaEnSucursal(req.user.id_terapeuta, await sucursalDeFicha(req.params.id)))) {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
     const ficha = rows[0];
     const [consumos] = await db.query('SELECT * FROM ficha_consumo WHERE id_ficha = ?', [ficha.id_ficha]);
     const [tratamientos] = await db.query('SELECT * FROM tratamiento_anterior WHERE id_ficha = ?', [ficha.id_ficha]);
@@ -43,6 +57,13 @@ const getById = async (req, res, next) => {
 
 const getHistorial = async (req, res, next) => {
   try {
+    if (req.user.rol === 'terapeuta') {
+      const suc = await sucursalDeFicha(req.params.id);
+      if (suc === null) return res.status(404).json({ error: 'Ficha no encontrada' });
+      if (!(await terapeutaEnSucursal(req.user.id_terapeuta, suc))) {
+        return res.status(403).json({ error: 'Acceso denegado' });
+      }
+    }
     const [rows] = await db.query(`
       SELECT ha.*, p.nombres, p.apellidos
       FROM historial_atencion ha
@@ -83,6 +104,11 @@ const create = async (req, res, next) => {
       historial_familiar, indicacion_intervencion, modalidad,
       consumos, tratamientos,
     } = req.body;
+    if (req.user.rol === 'terapeuta' &&
+        !(await terapeutaEnSucursal(req.user.id_terapeuta, await sucursalDePaciente(id_paciente)))) {
+      await conn.rollback();
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
     const [result] = await conn.query(
       `INSERT INTO ficha_clinica
          (id_paciente, motivo_consulta, antecedentes, alergias, medicamentos, diagnostico_actual, observaciones,
@@ -124,6 +150,12 @@ const update = async (req, res, next) => {
 
     const [fichas] = await conn.query('SELECT * FROM ficha_clinica WHERE id_ficha = ?', [req.params.id]);
     if (!fichas.length) { await conn.rollback(); return res.status(404).json({ error: 'Ficha no encontrada' }); }
+
+    if (req.user.rol === 'terapeuta' &&
+        !(await terapeutaEnSucursal(req.user.id_terapeuta, await sucursalDeFicha(req.params.id)))) {
+      await conn.rollback();
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
 
     const ficha = fichas[0];
     const nuevos = {

@@ -1,13 +1,36 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const errorHandler = require('./middleware/errorHandler');
 
+// Falla rápido si el secreto JWT no está configurado o es débil
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  console.error('FATAL: JWT_SECRET no está configurado o es demasiado corto (mínimo 32 caracteres).');
+  process.exit(1);
+}
+
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// Orígenes permitidos para CORS (coma-separados en CORS_ORIGINS, o localhost por defecto)
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(helmet());
+app.use(cors((req, cb) => {
+  const origin = req.header('Origin');
+  // Permite herramientas sin origin (curl, apps móviles), el propio origen del server
+  // (landing pública sirviendo su propio fetch) y orígenes en la lista
+  const sameOrigin = origin === `${req.protocol}://${req.get('host')}`;
+  const allowed = !origin || sameOrigin || allowedOrigins.includes(origin);
+  cb(allowed ? null : new Error('Origen no permitido por CORS'), { origin: allowed, credentials: true });
+}));
+app.use(cookieParser());
+app.use(express.json({ limit: '1mb' }));
 
 app.use('/api/auth',       require('./routes/auth.routes'));
 app.use('/api/empresas',   require('./routes/empresa.routes'));
