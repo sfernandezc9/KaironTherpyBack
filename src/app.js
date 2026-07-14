@@ -14,6 +14,10 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 
 const app = express();
 
+// Detrás de un reverse proxy (nginx, load balancer, etc.): confía en el primer hop
+// para que req.ip/req.protocol reflejen al cliente real (rate limit, cookie secure, CORS same-origin)
+app.set('trust proxy', 1);
+
 // Orígenes permitidos para CORS (coma-separados en CORS_ORIGINS, o localhost por defecto)
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
   .split(',')
