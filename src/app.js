@@ -55,13 +55,8 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use(errorHandler);
 
-// Landing pública en "/". La SPA de gestión clínica (login, dashboard, etc.)
-// se sirve para el resto de rutas vía el catch-all de abajo.
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/landing/index.html'));
-});
-app.use(express.static(path.join(__dirname, '../public/landing')));
-
+// La SPA (landing pública en "/", login, dashboard, etc.) se sirve completa,
+// incluida la ruta raíz, vía el catch-all de abajo.
 app.use(express.static(path.join(__dirname, '../dist')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist', 'index.html'));
