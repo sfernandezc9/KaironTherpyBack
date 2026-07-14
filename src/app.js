@@ -45,10 +45,18 @@ app.use('/api/sesiones',   require('./routes/sesion.routes'));
 app.use('/api/historial',  require('./routes/historial.routes'));
 app.use('/api/informes',    require('./routes/informe.routes'));
 app.use('/api/solicitudes', require('./routes/solicitud.routes'));
+app.use('/api/postulaciones', require('./routes/postulacion.routes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use(errorHandler);
+
+// Landing pública en "/". La SPA de gestión clínica (login, dashboard, etc.)
+// se sirve para el resto de rutas vía el catch-all de abajo.
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/landing/index.html'));
+});
+app.use(express.static(path.join(__dirname, '../public/landing')));
 
 app.use(express.static(path.join(__dirname, '../dist')));
 app.get('*', (req, res) => {
